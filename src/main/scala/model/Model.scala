@@ -7,3 +7,4 @@ import java.sql.Timestamp
   */
 case class Note(subject_id: Int, hadm_id: Int, chartdate: Timestamp, charttime: Timestamp, category: String, intime: Timestamp, text: String)
 
+case class hadmAndFeatures(hadm_id: Int, features: Seq[Double])

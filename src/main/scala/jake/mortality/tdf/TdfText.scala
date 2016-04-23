@@ -33,30 +33,23 @@ object TdfText {
         }
         else
           wordMap(s) = wordMap(s) + 1
-
-
       )
       wordMap
     }
-
     val AllWord = words.flatten.toSet.--(stopWords.toSet)
     val valuesForWords = AllWord.map { s =>
       val idf = 1.0+ math.log(N / wordsToDoc(s).toDouble)
       val sum = textWordMap.map { words =>
-
         var amount = 0.0
         if (words.contains(s)) {
 
           amount = words(s) * idf
 
         }
-
         amount
       }.sum
       (sum, s)
     }.toList.sortBy(st => -st._1)
-
     valuesForWords.take(n)
-
   }
 }
