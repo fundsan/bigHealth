@@ -1,14 +1,7 @@
 package jake.mortality.tdf
 import org.apache.spark.ml.feature.{Tokenizer, CountVectorizer, CountVectorizerModel}
-import org.apache.spark.mllib.linalg.SparseVector
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.ScalaReflection.Schema
-import org.apache.spark.sql.catalyst.expressions.Log
 import org.apache.spark.sql.types.{IntegerType, DataType, StructField, StructType}
 import org.apache.spark.sql.{Row, DataFrame, SQLContext}
-import org.apache.spark.mllib.linalg.Vectors
-
-import scala.collection.immutable.HashMap
 
 /**
   * Created by jake on 4/14/16.

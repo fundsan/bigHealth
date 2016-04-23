@@ -4,8 +4,6 @@ import jake.mortality.tdf.TdfText
 import model.hadmAndFeatures
 import org.apache.spark.mllib.clustering.LDA
 import org.apache.spark.mllib.linalg.{DenseVector, Vectors}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.{Row, DataFrame, SQLContext}
 
 /**
@@ -15,7 +13,9 @@ object Topics {
   def run(sqlContext: SQLContext, df: DataFrame, numTopics: Int, numWords: Int): DataFrame = {
     val sc = sqlContext.sparkContext
     val grouped = df.select("hadm_id", "text").rdd.groupBy(s => s.getInt(0)).collect()
-    val stopWords = sc.textFile("/Users/jake/dataFinal/stopwords").collect()
+    sc.hadoopConfiguration.set("fs.s3n.awsAccessKeyId", "*")
+    sc.hadoopConfiguration.set("fs.s3n.awsSecretAccessKey", "*")
+    val stopWords = sc.textFile("s3://jakemimc/stopwords").collect()
     val text = grouped.map(s => (s._1, TdfText.run(sqlContext, s, numWords, stopWords)))
     val vocabulary = text.flatMap(s => s._2.map(l => l._2)).distinct
     val vocabInd: Map[String, Int] = vocabulary.zipWithIndex.toMap
