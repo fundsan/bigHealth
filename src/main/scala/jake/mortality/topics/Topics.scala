@@ -1,10 +1,10 @@
-package jake.mortality.jake.mortality.topics
+package jake.mortality.topics
 
 import jake.mortality.tdf.TdfText
 import model.hadmAndFeatures
 import org.apache.spark.mllib.clustering.LDA
 import org.apache.spark.mllib.linalg.{DenseVector, Vectors}
-import org.apache.spark.sql.{Row, DataFrame, SQLContext}
+import org.apache.spark.sql.{DataFrame, SQLContext}
 
 /**
   * Created by jake on 4/14/16.
@@ -12,11 +12,11 @@ import org.apache.spark.sql.{Row, DataFrame, SQLContext}
 object Topics {
   def run(sqlContext: SQLContext, df: DataFrame, numTopics: Int, numWords: Int): DataFrame = {
     val sc = sqlContext.sparkContext
-    val grouped = df.select("hadm_id", "text").rdd.groupBy(s => s.getInt(0)).collect()
+    val grouped = df.select("hadm_id", "text").rdd.groupBy(s => s.getInt(0)).cache()
     sc.hadoopConfiguration.set("fs.s3n.awsAccessKeyId", "*")
     sc.hadoopConfiguration.set("fs.s3n.awsSecretAccessKey", "*")
     val stopWords = sc.textFile("s3://jakemimc/stopwords").collect()
-    val text = grouped.map(s => (s._1, TdfText.run(sqlContext, s, numWords, stopWords)))
+    val text = grouped.map(s => (s._1, TdfText.run(sqlContext, s, numWords, stopWords))).collect()
     val vocabulary = text.flatMap(s => s._2.map(l => l._2)).distinct
     val vocabInd: Map[String, Int] = vocabulary.zipWithIndex.toMap
     val regexpr = """[a-zA-Z]+""".r
@@ -32,12 +32,17 @@ object Topics {
           }
         }
         (id, Vectors.sparse(vocabulary.size, counts.toSeq))
-      }
+      }.cache()
+
     // Cluster the documents into three topics using LDA
-    val ldaModel = new LDA().setK(numTopics).setMaxIterations(1).run(documents)
+
+    val ldaModel = new LDA().setK(numTopics).setMaxIterations(50).run(documents)
+
     // Output topics. Each is a distribution over words (matching word count vectors)
     // Print topics, showing top-weighted 10 terms for each topic.
-    val topicIndices = ldaModel.describeTopics(maxTermsPerTopic = 10)
+    val topicIndices = sc.parallelize(ldaModel.describeTopics(maxTermsPerTopic = 25)).map(s=> s._1.zip(s._2)).map(array => array.map(s => vocabulary(s._1)+ " "+String.valueOf(s._2))).map(s => s.to)
+    topicIndices.saveAsTextFile("s3n://jakemimc/")
+ /*
     topicIndices.foreach { case (terms, termWeights) =>
       println("TOPIC:")
       terms.zip(termWeights).foreach { case (term, weight) =>
@@ -45,6 +50,8 @@ object Topics {
       }
       println()
     }
+    */
+
     val transp = ldaModel.topicsMatrix.transpose
     val returns = documents.map(s => (s._1, transp.multiply(s._2)))
     val docToPatient = df.select("hadm_id").map(s => s.getInt(0)).zipWithIndex.map(_.swap).collect().toMap
@@ -54,6 +61,8 @@ object Topics {
     val features = preFeats.map(s => s._2).map(s => (s._1,s._2.toArray.toSeq)).map(s => hadmAndFeatures(s._1,s._2))
     val newDF = sqlContext.createDataFrame(
       features)
+
+
     newDF
   }
 

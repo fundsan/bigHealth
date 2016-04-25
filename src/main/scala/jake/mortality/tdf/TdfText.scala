@@ -12,7 +12,7 @@ object TdfText {
     val hadm_id = itDf._1
 
     val N = itDf._2.size
-    val regexpr = """[a-zA-Z]+""".r
+    val regexpr = """[a-zA-Z]{2,}""".r
     val wordsToDoc = scala.collection.mutable.Map[String, Integer]()
     val words = itDf._2.map(row => regexpr.findAllIn(row.getString(1)).toList.map(s => s.toLowerCase()))
     val textWordMap = words.map { words =>
